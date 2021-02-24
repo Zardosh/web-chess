@@ -138,6 +138,7 @@ function movePiece(piece, startingPosition, endingPosition) {
                 curBoard[endingPosition[0]][endingPosition[1]] = boardPiece;
 
                 const destinationSquare = document.getElementById(`${endingPosition[0] + 1}${endingPosition[1] + 1}`);
+                destinationSquare.textContent = '';
                 destinationSquare.appendChild(piece);
 
                 // check if is check/checkmate
