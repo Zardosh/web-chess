@@ -78,9 +78,6 @@ function setPieceHoldEvents() {
             mouseX = event.clientX;
             mouseY = event.clientY;
         
-            const mouseOffsetX = mouseX - piece.offsetLeft;
-            const mouseOffsetY = mouseY - piece.offsetTop;
-        
             if (hasIntervalStarted === false) {
                 piece.style.position = 'absolute';
 
@@ -90,8 +87,8 @@ function setPieceHoldEvents() {
                 curHeldPieceStartingPosition = [parseInt(curHeldPieceStringPosition[0]) - 1, parseInt(curHeldPieceStringPosition[1]) - 1];
 
                 movePieceInterval = setInterval(function() {
-                    piece.style.top = mouseY - mouseOffsetY + 'px';
-                    piece.style.left = mouseX - mouseOffsetX + 'px';
+                    piece.style.top = mouseY - piece.offsetHeight / 2 + window.scrollY + 'px';
+                    piece.style.left = mouseX - piece.offsetWidth / 2 + window.scrollX + 'px';
                 }, 1);
         
                 hasIntervalStarted = true;
@@ -105,18 +102,25 @@ function setPieceHoldEvents() {
         if (curHeldPiece != null) {
             const boardElement = document.querySelector('.board');
 
-            if ((event.clientX > boardElement.offsetLeft && event.clientX < boardElement.offsetLeft + boardElement.offsetWidth) &&
-                (event.clientY > boardElement.offsetTop && event.clientY < boardElement.offsetTop + boardElement.offsetHeight)) {
-                    const mousePositionOnBoardX = event.clientX - boardElement.offsetLeft;
-                    const mousePositionOnBoardY = event.clientY - boardElement.offsetTop;
+            if ((event.clientX > boardElement.offsetLeft - window.scrollX && event.clientX < boardElement.offsetLeft + boardElement.offsetWidth - window.scrollX) &&
+                (event.clientY > boardElement.offsetTop - window.scrollY && event.clientY < boardElement.offsetTop + boardElement.offsetHeight - window.scrollY)) {
+                    const mousePositionOnBoardX = event.clientX - boardElement.offsetLeft + window.scrollX;
+                    const mousePositionOnBoardY = event.clientY - boardElement.offsetTop + window.scrollY;
 
-                    const xPosition = Math.floor(mousePositionOnBoardX / document.getElementsByClassName('square')[0].offsetWidth);
-                    const yPosition = Math.floor(mousePositionOnBoardY / document.getElementsByClassName('square')[0].offsetHeight);
+                    const boardBorderSize = parseInt(getComputedStyle(document.querySelector('.board'), null)
+                                                .getPropertyValue('border-left-width')
+                                                .split('px')[0]);
+
+                    const xPosition = Math.floor((mousePositionOnBoardX - boardBorderSize) / document.getElementsByClassName('square')[0].offsetWidth);
+                    const yPosition = Math.floor((mousePositionOnBoardY - boardBorderSize) / document.getElementsByClassName('square')[0].offsetHeight);
 
                     const pieceReleasePosition = [yPosition, xPosition];
 
-                    validateMovement(curHeldPiece, curHeldPieceStartingPosition, pieceReleasePosition);
-                    movePiece(curHeldPiece, curHeldPieceStartingPosition, pieceReleasePosition);
+                    if (!(pieceReleasePosition[0] == curHeldPieceStartingPosition[0] && pieceReleasePosition[1] == curHeldPieceStartingPosition[1])) {
+                        if (validateMovement(curHeldPieceStartingPosition, pieceReleasePosition)) {
+                            movePiece(curHeldPiece, curHeldPieceStartingPosition, pieceReleasePosition);
+                        }
+                    }
                 }
 
             curHeldPiece.style.position = 'static';
@@ -152,8 +156,99 @@ function movePiece(piece, startingPosition, endingPosition) {
     }
 }
 
-function validateMovement(piece, startingPosition, endingPosition) {
+function validateMovement(startingPosition, endingPosition) {
+    const boardPiece = curBoard[startingPosition[0]][startingPosition[1]];
+    
+    switch (boardPiece) {
+        case 'r':
+        case 'R': return validateRookMovement(startingPosition, endingPosition);
+        case 'n':
+        case 'N': return validateKnightMovement(startingPosition, endingPosition);
+        case 'b':
+        case 'B': return validateBishopMovement(startingPosition, endingPosition);
+        case 'q':
+        case 'Q': return validateQueenMovement(startingPosition, endingPosition);
+        case 'k': 
+        case 'K': return validateKingMovement(startingPosition, endingPosition);
+        case 'p': return validatePawnMovement('white', startingPosition, endingPosition);
+        case 'P': return validatePawnMovement('black', startingPosition, endingPosition);
+    }
+}
 
+function validateBishopMovement(startingPosition, endingPosition) {
+    if (endingPosition[0] - endingPosition[1] == startingPosition[0] - startingPosition[1] ||
+        endingPosition[0] + endingPosition[1] == startingPosition[0] + startingPosition[1]) {
+            // validate if theres a piece on the way
+            // validate if move puts own king in check
+            return true;
+    } else {
+        return false;
+    }
+}
+
+function validateRookMovement(startingPosition, endingPosition) {
+    if (endingPosition[0] == startingPosition[0] || endingPosition[1] == startingPosition[1]) {
+        // validate if theres a piece on the way
+        // validate if move puts own king in check
+        return true;
+    } else {
+        return false;
+    }
+}
+
+function validateKingMovement(startingPosition, endingPosition) {
+    if ([-1, 0, 1].includes(endingPosition[0] - startingPosition[0]) && [-1, 0, 1].includes(endingPosition[1] - startingPosition[1])) {
+        // validate if theres a piece on the way
+        // validate if move puts own king in check
+        // validate castling
+        return true;
+    } else {
+        return false;
+    }
+}
+
+function validateQueenMovement(startingPosition, endingPosition) {
+    if (endingPosition[0] - endingPosition[1] == startingPosition[0] - startingPosition[1] ||
+        endingPosition[0] + endingPosition[1] == startingPosition[0] + startingPosition[1] ||
+        endingPosition[0] == startingPosition[0] || endingPosition[1] == startingPosition[1]) {
+            // validate if theres a piece on the way
+            // validate if move puts own king in check
+            return true;
+    } else {
+        return false;
+    }
+}
+
+function validatePawnMovement(pawnColor, startingPosition, endingPosition) {
+    // validate if is capture (including en passant)
+    // validate if is promotion
+    let isFirstMove = false;
+
+    if ((pawnColor == 'white' && startingPosition[0] == 6) || (pawnColor == 'black' && startingPosition[0] == 1)) {
+        isFirstMove = true;
+    }
+
+    direction = pawnColor == 'black' ? 1 : -1;
+
+    if ((endingPosition[0] == startingPosition[0] + direction || (endingPosition[0] == startingPosition[0] + direction * 2 && isFirstMove)) &&
+         endingPosition[1] == startingPosition[1]) {
+        // validate if theres a piece on the way
+        // validate if move puts own king in check
+        return true;
+    } else {
+        return false;
+    }
+}
+
+function validateKnightMovement(startingPosition, endingPosition) {
+    if (([-2, 2].includes(endingPosition[0] - startingPosition[0]) && [-1, 1].includes(endingPosition[1] - startingPosition[1])) || 
+        ([-2, 2].includes(endingPosition[1] - startingPosition[1]) && [-1, 1].includes(endingPosition[0] - startingPosition[0]))) { 
+            // validate if theres a friendly piece on the destination square way
+            // validate if move puts own king in check
+            return true;
+    } else {
+        return false;
+    }
 }
 
 startGame();
