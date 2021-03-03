@@ -133,6 +133,7 @@ function setPieceHoldEvents() {
 }
 
 function movePiece(piece, startingPosition, endingPosition) {
+    // move validations to validateMovement()
     const boardPiece = curBoard[startingPosition[0]][startingPosition[1]];
     
     if (boardPiece != '.') {
@@ -178,7 +179,9 @@ function validateMovement(startingPosition, endingPosition) {
 function validateBishopMovement(startingPosition, endingPosition) {
     if (endingPosition[0] - endingPosition[1] == startingPosition[0] - startingPosition[1] ||
         endingPosition[0] + endingPosition[1] == startingPosition[0] + startingPosition[1]) {
-            // validate if theres a piece on the way
+            if (!validatePathIsBlocked(startingPosition, endingPosition)) {
+                return false;
+            }
             // validate if move puts own king in check
             return true;
     } else {
@@ -188,7 +191,9 @@ function validateBishopMovement(startingPosition, endingPosition) {
 
 function validateRookMovement(startingPosition, endingPosition) {
     if (endingPosition[0] == startingPosition[0] || endingPosition[1] == startingPosition[1]) {
-        // validate if theres a piece on the way
+        if (!validatePathIsBlocked(startingPosition, endingPosition)) {
+            return false;
+        }
         // validate if move puts own king in check
         return true;
     } else {
@@ -198,7 +203,9 @@ function validateRookMovement(startingPosition, endingPosition) {
 
 function validateKingMovement(startingPosition, endingPosition) {
     if ([-1, 0, 1].includes(endingPosition[0] - startingPosition[0]) && [-1, 0, 1].includes(endingPosition[1] - startingPosition[1])) {
-        // validate if theres a piece on the way
+        if (isFriendlyPieceOnEndingPosition(endingPosition)) {
+            return false;
+        }
         // validate if move puts own king in check
         // validate castling
         return true;
@@ -211,7 +218,9 @@ function validateQueenMovement(startingPosition, endingPosition) {
     if (endingPosition[0] - endingPosition[1] == startingPosition[0] - startingPosition[1] ||
         endingPosition[0] + endingPosition[1] == startingPosition[0] + startingPosition[1] ||
         endingPosition[0] == startingPosition[0] || endingPosition[1] == startingPosition[1]) {
-            // validate if theres a piece on the way
+            if (!validatePathIsBlocked(startingPosition, endingPosition)) {
+                return false;
+            }
             // validate if move puts own king in check
             return true;
     } else {
@@ -220,7 +229,18 @@ function validateQueenMovement(startingPosition, endingPosition) {
 }
 
 function validatePawnMovement(pawnColor, startingPosition, endingPosition) {
-    // validate if is capture (including en passant)
+    direction = pawnColor == 'black' ? 1 : -1;
+
+    let isCapture = false;
+
+    if (endingPosition[0] == startingPosition[0] + direction &&
+        [startingPosition[1] - 1, startingPosition[1] + 1].includes(endingPosition[1])) {
+            // validate if is en passant
+            if (isEnemyPieceOnEndingPosition(endingPosition)) {
+                isCapture = true;
+            }
+        }
+
     // validate if is promotion
     let isFirstMove = false;
 
@@ -228,13 +248,16 @@ function validatePawnMovement(pawnColor, startingPosition, endingPosition) {
         isFirstMove = true;
     }
 
-    direction = pawnColor == 'black' ? 1 : -1;
+    if (((endingPosition[0] == startingPosition[0] + direction || (endingPosition[0] == startingPosition[0] + direction * 2 && isFirstMove)) &&
+         endingPosition[1] == startingPosition[1]) || isCapture) {
+            if (isFriendlyPieceOnEndingPosition(endingPosition)) {
+                return false;
+            } else if (!isCapture && isEnemyPieceOnEndingPosition(endingPosition)) {
+                return false;
+            }
 
-    if ((endingPosition[0] == startingPosition[0] + direction || (endingPosition[0] == startingPosition[0] + direction * 2 && isFirstMove)) &&
-         endingPosition[1] == startingPosition[1]) {
-        // validate if theres a piece on the way
-        // validate if move puts own king in check
-        return true;
+            // validate if move puts own king in check
+            return true;
     } else {
         return false;
     }
@@ -242,10 +265,88 @@ function validatePawnMovement(pawnColor, startingPosition, endingPosition) {
 
 function validateKnightMovement(startingPosition, endingPosition) {
     if (([-2, 2].includes(endingPosition[0] - startingPosition[0]) && [-1, 1].includes(endingPosition[1] - startingPosition[1])) || 
-        ([-2, 2].includes(endingPosition[1] - startingPosition[1]) && [-1, 1].includes(endingPosition[0] - startingPosition[0]))) { 
-            // validate if theres a friendly piece on the destination square way
+        ([-2, 2].includes(endingPosition[1] - startingPosition[1]) && [-1, 1].includes(endingPosition[0] - startingPosition[0]))) {
+            if (isFriendlyPieceOnEndingPosition(endingPosition)) {
+                return false;
+            }
             // validate if move puts own king in check
             return true;
+    } else {
+        return false;
+    }
+}
+
+function validatePathIsBlocked(startingPosition, endingPosition) {
+    const xDifference = endingPosition[0] - startingPosition[0]
+    const yDifference = endingPosition[1] - startingPosition[1]
+
+    let xDirection = 0;
+    let yDirection = 0;
+
+    if (xDifference < 0) {
+        xDirection = -1;
+    } else if (xDifference > 0) {
+        xDirection = 1;
+    }
+
+    if (yDifference < 0) {
+        yDirection = -1;
+    } else if (yDifference > 0) {
+        yDirection = 1;
+    }
+
+    let squareX = startingPosition[0] + xDirection;
+    let squareY = startingPosition[1] + yDirection;
+
+    while (squareX != endingPosition[0] || squareY != endingPosition[1]) {
+        const isSquareOccupied = document.getElementById(`${squareX + 1}${squareY + 1}`).children.length > 0;
+
+        if (isSquareOccupied) {
+            return false;
+        }
+
+        squareX += xDirection;
+        squareY += yDirection;
+    }
+    
+    if (isFriendlyPieceOnEndingPosition(endingPosition)) {
+        return false;
+    } else {
+        // enemy piece has been captured
+    }
+
+    return true;
+}
+
+function isFriendlyPieceOnEndingPosition(endingPosition) {
+    const destinationSquare = document.getElementById(`${endingPosition[0] + 1}${endingPosition[1] + 1}`);
+
+    if (destinationSquare.children.length > 0) {
+        const destinationPiece = destinationSquare.querySelector('.piece').id;
+    
+        if (destinationPiece == destinationPiece.toUpperCase() && curPlayer == 'black' ||
+            destinationPiece == destinationPiece.toLowerCase() && curPlayer == 'white') {
+                return true;
+        } else {
+            return false;
+        }        
+    } else {
+        return false;
+    }
+}
+
+function isEnemyPieceOnEndingPosition(endingPosition) {
+    const destinationSquare = document.getElementById(`${endingPosition[0] + 1}${endingPosition[1] + 1}`);
+
+    if (destinationSquare.children.length > 0) {
+        const destinationPiece = destinationSquare.querySelector('.piece').id;
+    
+        if (destinationPiece == destinationPiece.toUpperCase() && curPlayer == 'white' ||
+            destinationPiece == destinationPiece.toLowerCase() && curPlayer == 'black') {
+                return true;
+        } else {
+            return false;
+        }        
     } else {
         return false;
     }

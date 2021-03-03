@@ -13,11 +13,12 @@ A chess game made with pure HTML, CSS and Javascript
 - Load pieces based on given matrix: :white_check_mark: 
 - Make piece stick to cursor on mouse hold: :white_check_mark:
 - Make piece snap to grid on mouse release: :white_check_mark:
-- Piece movement restrictions: :x:
+- Piece movement restrictions: :white_check_mark:
 - Check restrictions: :x:
 - Checkmate logic: :x:
 - Pawn promotion logic: :x:
 - Castling logic: :x:
+- En passant logic: :x:
 - Stalemate logic: :x:
 - Drawing logic (threefold repetition, fifty-move rule, impossibility of checkmate): :x:
 - Improve piece snapping system: :white_check_mark:
